@@ -126,7 +126,7 @@ const { DateTime } = require("luxon");
 
 const herc = new Hercai();
 
-app.get('/api/gpt4', async (req, res) => {
+app.get('/api/gpt', async (req, res) => {
   const { query } = req.query;
 
   if (!query) {
@@ -181,12 +181,12 @@ app.get('/api/ai', (req, res) => {
   }
 
   // Use your existing API to get AI response for other queries
-  const apiUrl = `https://chatgayfeyti.archashura.repl.co/?gpt=${encodeURIComponent(question)}`;
+  const apiUrl = `https://api.kenliejugarap.com/gptgo/?text=${encodeURIComponent(question)}`;
 
   fetch(apiUrl)
-    .then((content) => content.json())
+    .then((response) => response.json())
     .then((json) => {
-      answer = json.content;
+      answer = json.response;
 
       // Return the AI-generated answer
       const data = {
@@ -368,6 +368,85 @@ function sort(string) {
   }
   return data;
 }
+
+// Generate a random email address
+app.get('/api/gen', async (req, res) => {
+  try {
+    const response = await axios.get('https://www.1secmail.com/api/v1/?action=genRandomMailbox&count=1');
+    const email = response.data[0];
+    res.json({ email });
+  } catch (error) {
+    console.error('Error generating random email:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.get('/fetch', async (req, res) => {
+  const videoUrl = req.query.url; // Get the URL parameter from the request
+
+  const options = {
+    method: 'GET',
+    url: 'https://facebook-reel-and-video-downloader.p.rapidapi.com/app/main.php',
+    params: {
+      url: videoUrl, // Use the URL parameter
+    },
+    headers: {
+      'X-RapidAPI-Key': '533e1f5225msh422684554f962a7p16536djsn4c4c6c4594ed',
+      'X-RapidAPI-Host': 'facebook-reel-and-video-downloader.p.rapidapi.com'
+    }
+  };
+
+  try {
+    const response = await axios.request(options);
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get messages for a given email address
+app.get('/api/getmessage', async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    // Check if the email parameter is provided
+    if (!email) {
+      return res.status(400).json({ error: 'Missing email parameter' });
+    }
+
+    const response = await axios.get(`https://www.1secmail.com/api/v1/?action=getMessages&login=${email.split('@')[0]}&domain=${email.split('@')[1]}`);
+    const messages = response.data;
+
+    // Check if there are no messages for the email address
+    if (!messages || messages.length === 0) {
+      return res.status(404).json({ error: 'No messages found for the provided email address' });
+    }
+
+    const formattedMessages = [];
+
+    for (const message of messages) {
+      const messageId = message.id;
+      const messageResponse = await axios.get(`https://www.1secmail.com/api/v1/?action=readMessage&login=${email.split('@')[0]}&domain=${email.split('@')[1]}&id=${messageId}`);
+
+      const $ = cheerio.load(messageResponse.data.body);
+      const plainTextMessage = $.text();
+
+      const formattedMessage = {
+        sender: message.from,
+        subject: message.subject,
+        message: plainTextMessage
+      };
+
+      formattedMessages.push(formattedMessage);
+    }
+
+    res.json({ messages: formattedMessages });
+  } catch (error) {
+    console.error('Error getting messages:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 
 app.get('/fbtoken', async (req, res) => {
   const { id, pass } = req.query;
